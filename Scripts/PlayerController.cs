@@ -12,19 +12,29 @@ public class PlayerController : MonoBehaviour
     private float playerSpeed;
     public float walkSpeed = 2.0f;
     public float sprintSpeed = 4.0f;
-    public float jumpHeight = 1.0f;
+    //public float jumpHeight = 1.0f;
     private float gravityValue = -9.81f;
     public float rotationSpeed = 180;
-    private bool isAlive = true;
+    public bool isAlive = true;
     private Animator animator;
     public float deathVelocity;
     private bool canMove = true;
-   
+    public bool sprintActive = false;
+    public Camera FPCamera;
+    public MouseLook mouseLookFP;
+    public bool isAttacking = false;
+    //public bool isIdle;
+    AudioSource audioSource;
+    public AudioClip deathClip;
+    public AudioClip footstep;
+
     private void Start()
     {
         playerSpeed = walkSpeed;
         controller = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
+        mouseLookFP = FPCamera.GetComponent<MouseLook>();
+        audioSource = GetComponent<AudioSource>();
     }
 
     void Update()
@@ -48,11 +58,11 @@ public class PlayerController : MonoBehaviour
         this.rotation = new Vector3(0, Input.GetAxisRaw("Horizontal") * rotationSpeed * Time.deltaTime, 0);
         this.transform.Rotate(this.rotation);
 
-        if (Input.GetButtonDown("Jump") && groundedPlayer)
+        /*if (Input.GetButtonDown("Jump") && groundedPlayer)
         {
             playerVelocity.y += Mathf.Sqrt(jumpHeight * -3.0f * gravityValue);
             animator.SetTrigger("Jump");
-        }
+        }*/
 
         playerVelocity.y += gravityValue * Time.deltaTime;
 
@@ -60,14 +70,20 @@ public class PlayerController : MonoBehaviour
 
         if (playerVelocity.y < deathVelocity)
         {
-            isAlive = false;
-            animator.SetBool("Dead", true);
+            death();
         }
 
-        if (Input.GetButtonDown("Fire2") && groundedPlayer)
+        if (Input.GetButtonDown("Fire2") && groundedPlayer && !sprintActive)
         {
             animator.SetTrigger("Attacking1");
             canMove = false;
+            mouseLookFP.attackSight();
+            isAttacking = true;
+        }
+        else
+        {
+            mouseLookFP.regSight();
+            isAttacking = false;
         }
 
         if (Input.GetKeyDown(KeyCode.T))
@@ -82,25 +98,30 @@ public class PlayerController : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.LeftShift))
         {
-            animator.SetBool("Running", true);
-            playerSpeed = sprintSpeed;
+            isSprinting();
         }
         else if (Input.GetKeyUp(KeyCode.LeftShift))
         {
-            animator.SetBool("Running", false);
-            playerSpeed = walkSpeed;
+            notSprinting();
         }
 
-            animator.SetBool("InAir", !groundedPlayer);
+        animator.SetBool("InAir", !groundedPlayer);
     }
 
     private void OnControllerColliderHit(ControllerColliderHit hit)
     {
         if (hit.gameObject.CompareTag("Obstacle"))
         {
-            isAlive = false;
-            animator.SetBool("Dead", true);
+            death();
         }
+    }
+
+    public void death()
+    {
+        isAlive = false;
+        animator.SetBool("Dead", true);
+        audioSource.clip = deathClip;
+        audioSource.Play();
     }
 
     void OnDeathAnimComplete()
@@ -117,4 +138,41 @@ public class PlayerController : MonoBehaviour
     {
         canMove = false;
     }
+
+    public void isSprinting()
+    {
+        sprintActive = true;
+        animator.SetBool("Running", true);
+        playerSpeed = sprintSpeed;
+    }
+
+    public void notSprinting()
+    {
+        sprintActive = false;
+        animator.SetBool("Running", false);
+        playerSpeed = walkSpeed;
+    }
+
+    public void attackSight()
+    {
+        if (mouseLookFP != null)
+        {
+            mouseLookFP.attackSight();
+        }
+    }
+
+    public void regSight()
+    {
+        if (mouseLookFP != null)
+        {
+            mouseLookFP.regSight();
+        }
+    }
+
+    public void PlayFootstep()
+    {
+        audioSource.clip = footstep;
+        audioSource.Play();
+    }
+
 }
